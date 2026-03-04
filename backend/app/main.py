@@ -1,10 +1,15 @@
 from contextlib import asynccontextmanager
+from pathlib import Path
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 
 from app.config import get_settings
 from app.jobs.nightly_schedule import create_scheduler
 from app.routers import categories, time_blocks, time_logs, daily_review, analytics, schedule
+
+UI_FILE = Path(__file__).parents[2] / "scheduler.html"
 
 settings = get_settings()
 
@@ -44,3 +49,8 @@ app.include_router(schedule.router)
 @app.get("/health", tags=["health"])
 async def health():
     return {"status": "ok"}
+
+
+@app.get("/", include_in_schema=False)
+async def serve_ui():
+    return FileResponse(UI_FILE)
