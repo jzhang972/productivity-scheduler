@@ -1,0 +1,1088 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Productivity Scheduler</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0f172a; --surface: #1e293b; --surface2: #273449;
+    --border: #334155; --text: #f1f5f9; --muted: #94a3b8;
+    --primary: #6366f1; --primary-dim: #4338ca;
+    --green: #22c55e; --red: #ef4444; --yellow: #eab308; --blue: #3b82f6;
+    --radius: 8px; --font: 'Segoe UI', system-ui, sans-serif;
+  }
+
+  body { background: var(--bg); color: var(--text); font-family: var(--font); font-size: 14px; min-height: 100vh; }
+
+  /* NAV */
+  nav { background: var(--surface); border-bottom: 1px solid var(--border); padding: 0 24px; display: flex; align-items: center; gap: 24px; height: 52px; position: sticky; top: 0; z-index: 100; }
+  .nav-brand { font-weight: 700; font-size: 15px; color: var(--primary); }
+  .nav-tabs { display: flex; gap: 4px; }
+  .tab-btn { background: none; border: none; color: var(--muted); padding: 6px 12px; border-radius: var(--radius); cursor: pointer; font-size: 13px; font-family: inherit; transition: all .15s; }
+  .tab-btn:hover { color: var(--text); background: var(--surface2); }
+  .tab-btn.active { color: var(--text); background: var(--surface2); }
+  .api-url-wrap { margin-left: auto; display: flex; align-items: center; gap: 6px; }
+  .api-url-wrap input { background: var(--surface2); border: 1px solid var(--border); color: var(--text); padding: 4px 8px; border-radius: var(--radius); font-size: 12px; width: 200px; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--red); }
+  .dot.ok { background: var(--green); }
+
+  /* LAYOUT */
+  main { max-width: 1000px; margin: 0 auto; padding: 24px 16px; }
+  .page { display: none; }
+  .page.active { display: block; }
+
+  /* UTILS */
+  h1 { font-size: 20px; font-weight: 700; }
+  h2 { font-size: 15px; font-weight: 600; }
+  .muted { color: var(--muted); }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; }
+  .row { display: flex; align-items: center; gap: 8px; }
+  .spacer { flex: 1; }
+  .badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 99px; font-size: 11px; font-weight: 600; }
+  .tag { display: inline-flex; padding: 2px 6px; border-radius: 4px; font-size: 11px; background: var(--surface2); color: var(--muted); }
+  .btn { display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: var(--radius); border: none; cursor: pointer; font-size: 13px; font-family: inherit; font-weight: 500; transition: opacity .15s; }
+  .btn:hover { opacity: .85; }
+  .btn:disabled { opacity: .4; cursor: not-allowed; }
+  .btn-primary { background: var(--primary); color: #fff; }
+  .btn-secondary { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+  .btn-danger { background: var(--red); color: #fff; }
+  .btn-green { background: var(--green); color: #000; }
+  .btn-sm { padding: 4px 10px; font-size: 12px; }
+  input, select, textarea { background: var(--surface2); border: 1px solid var(--border); color: var(--text); border-radius: var(--radius); padding: 7px 10px; font-size: 13px; font-family: inherit; width: 100%; outline: none; }
+  input:focus, select:focus, textarea:focus { border-color: var(--primary); }
+  label { font-size: 12px; color: var(--muted); display: block; margin-bottom: 4px; }
+  .form-group { display: flex; flex-direction: column; gap: 4px; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+  .toast-area { position: fixed; bottom: 20px; right: 20px; display: flex; flex-direction: column; gap: 8px; z-index: 999; }
+  .toast { background: var(--surface); border: 1px solid var(--border); padding: 10px 16px; border-radius: var(--radius); font-size: 13px; box-shadow: 0 4px 20px #0008; animation: slideIn .2s ease; }
+  .toast.err { border-color: var(--red); color: var(--red); }
+  .toast.ok { border-color: var(--green); color: var(--green); }
+  @keyframes slideIn { from { transform: translateX(20px); opacity: 0; } to { transform: none; opacity: 1; } }
+  .sep { height: 1px; background: var(--border); margin: 16px 0; }
+  .spinner { width: 14px; height: 14px; border: 2px solid var(--border); border-top-color: var(--primary); border-radius: 50%; animation: spin .6s linear infinite; display: inline-block; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* MODAL */
+  .modal-overlay { display: none; position: fixed; inset: 0; background: #0009; z-index: 200; align-items: center; justify-content: center; }
+  .modal-overlay.open { display: flex; }
+  .modal { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; width: 100%; max-width: 480px; max-height: 90vh; overflow-y: auto; }
+  .modal-title { font-size: 16px; font-weight: 700; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; }
+  .modal-title button { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 18px; }
+  .modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; }
+
+  /* ── TODAY PAGE ─────────────────────────────────── */
+  .day-header { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+  .day-nav-btn { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 18px; line-height: 1; padding: 4px; border-radius: var(--radius); }
+  .day-nav-btn:hover { background: var(--surface2); color: var(--text); }
+  .day-pills { display: flex; gap: 6px; margin-left: auto; }
+
+  .active-banner { background: var(--surface); border: 1px solid var(--primary); border-radius: var(--radius); padding: 10px 14px; margin-bottom: 12px; display: none; align-items: center; gap: 10px; }
+  .active-banner.show { display: flex; }
+  .pulse { width: 8px; height: 8px; border-radius: 50%; background: var(--blue); animation: pulse 1.2s ease infinite; flex-shrink: 0; }
+  @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.5;transform:scale(1.3)} }
+  .timer-display { font-family: monospace; font-size: 15px; font-weight: 700; min-width: 54px; }
+
+  /* TIMELINE */
+  .timeline-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow-y: auto; max-height: 70vh; position: relative; }
+  .timeline-inner { position: relative; }
+  .hour-row { display: flex; align-items: flex-start; border-top: 1px solid var(--border); }
+  .hour-row:first-child { border-top: none; }
+  .hour-label { width: 52px; flex-shrink: 0; padding: 4px 8px 0 8px; font-size: 11px; color: var(--muted); text-align: right; user-select: none; }
+  .hour-lane { flex: 1; min-height: 60px; position: relative; border-left: 1px solid var(--border); }
+  .now-line { position: absolute; left: 0; right: 0; height: 2px; background: var(--red); z-index: 10; pointer-events: none; }
+  .now-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--red); position: absolute; left: -4px; top: -3px; }
+
+  .block-card { position: absolute; left: 4px; right: 4px; border-radius: 6px; padding: 5px 8px; overflow: hidden; cursor: pointer; border-left: 3px solid; transition: opacity .15s; font-size: 12px; }
+  .block-card:hover { opacity: .9; }
+  .block-card .bc-title { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .block-card .bc-time { font-size: 10px; opacity: .7; }
+  .block-card .bc-actions { display: flex; gap: 4px; margin-top: 4px; }
+  .block-btn { padding: 2px 7px; border-radius: 4px; border: none; cursor: pointer; font-size: 11px; font-weight: 600; font-family: inherit; }
+  .status-dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
+
+  /* CATEGORIES PAGE */
+  .cat-list { display: flex; flex-direction: column; gap: 10px; }
+  .cat-row { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px; display: flex; align-items: center; gap: 10px; }
+  .cat-swatch { width: 14px; height: 14px; border-radius: 3px; flex-shrink: 0; }
+  .cat-info { flex: 1; }
+  .cat-name { font-weight: 600; }
+  .cat-meta { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+  /* WEEKLY PAGE */
+  .prog-row { margin-bottom: 14px; }
+  .prog-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; }
+  .prog-bar-track { height: 8px; background: var(--surface2); border-radius: 99px; overflow: hidden; }
+  .prog-bar-fill { height: 100%; border-radius: 99px; transition: width .5s ease; }
+
+  /* REVIEW PAGE */
+  .energy-grid { display: flex; gap: 8px; }
+  .energy-btn { flex: 1; padding: 10px 6px; background: var(--surface2); border: 2px solid var(--border); border-radius: var(--radius); cursor: pointer; text-align: center; font-family: inherit; color: var(--text); transition: all .15s; }
+  .energy-btn:hover { border-color: var(--muted); }
+  .energy-btn.selected { border-color: var(--primary); background: #6366f120; }
+  .energy-emoji { font-size: 22px; display: block; }
+  .energy-label { font-size: 11px; color: var(--muted); }
+
+  /* ANALYTICS */
+  .chart-bar-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+  .chart-bar-label { width: 80px; font-size: 11px; color: var(--muted); text-align: right; flex-shrink: 0; }
+  .chart-bar-track { flex: 1; height: 14px; background: var(--surface2); border-radius: 4px; overflow: hidden; }
+  .chart-bar-fill { height: 100%; border-radius: 4px; transition: width .5s ease; }
+  .chart-bar-val { width: 48px; font-size: 11px; color: var(--muted); text-align: right; }
+  .stat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 20px; }
+  .stat-box { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; text-align: center; }
+  .stat-val { font-size: 28px; font-weight: 700; color: var(--primary); }
+  .stat-label { font-size: 11px; color: var(--muted); margin-top: 4px; }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-brand">⚡ Scheduler</div>
+  <div class="nav-tabs">
+    <button class="tab-btn active" onclick="showPage('today')">Today</button>
+    <button class="tab-btn" onclick="showPage('categories')">Categories</button>
+    <button class="tab-btn" onclick="showPage('weekly')">Weekly</button>
+    <button class="tab-btn" onclick="showPage('review')">Review</button>
+    <button class="tab-btn" onclick="showPage('analytics')">Analytics</button>
+  </div>
+  <div class="api-url-wrap">
+    <div class="dot" id="api-dot"></div>
+    <input id="api-url" value="http://localhost:8000" onchange="checkHealth()" />
+    <button class="btn btn-secondary btn-sm" onclick="checkHealth()">Ping</button>
+  </div>
+</nav>
+
+<div class="toast-area" id="toasts"></div>
+
+<!-- ═══════════════════════════ TODAY PAGE ═══════════════════════════ -->
+<main>
+<div class="page active" id="page-today">
+  <div class="day-header">
+    <button class="day-nav-btn" onclick="changeDay(-1)">‹</button>
+    <div>
+      <h1 id="day-title">—</h1>
+      <div class="muted" id="day-sub" style="font-size:12px"></div>
+    </div>
+    <button class="day-nav-btn" onclick="changeDay(1)">›</button>
+    <div class="day-pills" id="day-pills"></div>
+    <button class="btn btn-secondary btn-sm" onclick="generateSchedule()">⚙ Generate</button>
+    <button class="btn btn-primary btn-sm" onclick="openBlockModal(null)">+ Block</button>
+  </div>
+
+  <!-- Active timer banner -->
+  <div class="active-banner" id="active-banner">
+    <div class="pulse"></div>
+    <div class="spacer" id="banner-title">Working…</div>
+    <div class="timer-display" id="timer-display">00:00</div>
+    <button class="btn btn-secondary btn-sm" onclick="pauseTimer()">⏸ Pause</button>
+    <button class="btn btn-danger btn-sm" onclick="stopTimer()">⏹ Stop</button>
+  </div>
+
+  <!-- Timeline -->
+  <div class="timeline-wrap" id="timeline-wrap">
+    <div class="timeline-inner" id="timeline"></div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════ CATEGORIES PAGE ═══════════════════════════ -->
+<div class="page" id="page-categories">
+  <div class="row" style="margin-bottom:16px">
+    <h1>Categories</h1>
+    <div class="spacer"></div>
+    <button class="btn btn-primary" onclick="openCatModal(null)">+ New Category</button>
+  </div>
+  <div class="cat-list" id="cat-list"><div class="muted">Loading…</div></div>
+</div>
+
+<!-- ═══════════════════════════ WEEKLY PAGE ═══════════════════════════ -->
+<div class="page" id="page-weekly">
+  <div class="row" style="margin-bottom:16px">
+    <button class="day-nav-btn" onclick="changeWeek(-1)">‹</button>
+    <h1 id="week-title">Week</h1>
+    <button class="day-nav-btn" onclick="changeWeek(1)">›</button>
+    <div class="spacer"></div>
+    <span id="weekly-totals" class="muted"></span>
+  </div>
+  <div id="weekly-content"><div class="muted">Loading…</div></div>
+</div>
+
+<!-- ═══════════════════════════ REVIEW PAGE ═══════════════════════════ -->
+<div class="page" id="page-review">
+  <div class="row" style="margin-bottom:16px">
+    <h1>Daily Review</h1>
+    <div class="spacer"></div>
+    <span class="muted" id="review-date-label"></span>
+  </div>
+  <div style="display:flex;flex-direction:column;gap:16px;max-width:600px">
+    <div class="card">
+      <h2 style="margin-bottom:12px">Energy Level</h2>
+      <div class="energy-grid" id="energy-grid">
+        <button class="energy-btn" onclick="selectEnergy(1)"><span class="energy-emoji">😫</span><span class="energy-label">Drained</span></button>
+        <button class="energy-btn" onclick="selectEnergy(2)"><span class="energy-emoji">😞</span><span class="energy-label">Low</span></button>
+        <button class="energy-btn" onclick="selectEnergy(3)"><span class="energy-emoji">😐</span><span class="energy-label">Okay</span></button>
+        <button class="energy-btn" onclick="selectEnergy(4)"><span class="energy-emoji">😊</span><span class="energy-label">Good</span></button>
+        <button class="energy-btn" onclick="selectEnergy(5)"><span class="energy-emoji">🚀</span><span class="energy-label">Peak</span></button>
+      </div>
+    </div>
+    <div class="card grid2">
+      <div class="form-group">
+        <label>Sleep Hours</label>
+        <input type="number" id="r-sleep" min="0" max="24" step="0.5" value="7">
+      </div>
+      <div class="form-group" style="justify-content:flex-end">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+          <input type="checkbox" id="r-gym" style="width:auto"> Gym done today
+        </label>
+      </div>
+    </div>
+    <div class="card">
+      <div id="review-blocks-summary"></div>
+    </div>
+    <div class="card">
+      <div class="form-group">
+        <label>Notes</label>
+        <textarea id="r-notes" rows="3" placeholder="What went well? What to improve tomorrow?"></textarea>
+      </div>
+    </div>
+    <button class="btn btn-primary" onclick="submitReview()" style="width:100%;justify-content:center;padding:10px">
+      Submit Review &amp; Generate Tomorrow's Schedule
+    </button>
+    <div id="review-msg"></div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════ ANALYTICS PAGE ═══════════════════════════ -->
+<div class="page" id="page-analytics">
+  <div class="row" style="margin-bottom:16px">
+    <h1>Analytics</h1>
+    <div class="spacer"></div>
+    <div style="display:flex;gap:4px">
+      <button class="btn btn-secondary btn-sm" onclick="loadAnalytics(7)" id="an-7">7d</button>
+      <button class="btn btn-secondary btn-sm" onclick="loadAnalytics(14)" id="an-14">14d</button>
+      <button class="btn btn-secondary btn-sm" onclick="loadAnalytics(30)" id="an-30">30d</button>
+    </div>
+  </div>
+  <div id="analytics-content"><div class="muted">Loading…</div></div>
+</div>
+</main>
+
+<!-- ═══════════════════════════ MODALS ═══════════════════════════ -->
+
+<!-- Block Modal -->
+<div class="modal-overlay" id="block-modal">
+  <div class="modal">
+    <div class="modal-title">
+      <span id="bm-title">New Block</span>
+      <button onclick="closeModal('block-modal')">✕</button>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div class="form-group">
+        <label>Category *</label>
+        <select id="bm-cat"></select>
+      </div>
+      <div class="grid2">
+        <div class="form-group">
+          <label>Start Time *</label>
+          <input type="time" id="bm-start" value="09:00">
+        </div>
+        <div class="form-group">
+          <label>End Time *</label>
+          <input type="time" id="bm-end" value="10:00">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Title (optional)</label>
+        <input type="text" id="bm-title-inp" placeholder="What are you working on?">
+      </div>
+      <div class="form-group">
+        <label>Notes (optional)</label>
+        <textarea id="bm-notes" rows="2"></textarea>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('block-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveBlock()" id="bm-save">Create</button>
+    </div>
+  </div>
+</div>
+
+<!-- Category Modal -->
+<div class="modal-overlay" id="cat-modal">
+  <div class="modal">
+    <div class="modal-title">
+      <span id="cm-title">New Category</span>
+      <button onclick="closeModal('cat-modal')">✕</button>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div class="form-group">
+        <label>Name *</label>
+        <input type="text" id="cm-name" placeholder="e.g. Research">
+      </div>
+      <div class="grid2">
+        <div class="form-group">
+          <label>Color</label>
+          <input type="color" id="cm-color" value="#6366f1" style="height:36px;padding:2px">
+        </div>
+        <div class="form-group">
+          <label>Priority (1-10)</label>
+          <input type="number" id="cm-priority" min="1" max="10" value="5">
+        </div>
+      </div>
+      <div class="grid2">
+        <div class="form-group">
+          <label>Weekly Target (min)</label>
+          <input type="number" id="cm-weekly" min="0" value="300">
+        </div>
+        <div class="form-group">
+          <label>Daily Cap (min, optional)</label>
+          <input type="number" id="cm-cap" min="0" placeholder="e.g. 240">
+        </div>
+      </div>
+      <div style="display:flex;gap:16px">
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;color:var(--text)">
+          <input type="checkbox" id="cm-deep" style="width:auto"> Deep Work
+        </label>
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;color:var(--text)">
+          <input type="checkbox" id="cm-active" style="width:auto" checked> Active
+        </label>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('cat-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveCat()" id="cm-save">Create</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════════
+let API = () => document.getElementById('api-url').value.replace(/\/$/, '')
+let selectedDate = todayStr()
+let weekOffset = 0   // weeks from current
+let categories = []
+let blocks = []
+let editingBlockId = null
+let editingCatId = null
+let reviewEnergy = 3
+let existingReviewId = null
+let analyticsDays = 14
+
+// Timer state
+let timerInterval = null
+let timerLogId = null
+let timerBlockId = null
+let timerStartedAt = null
+let timerPausedElapsed = 0
+let timerPaused = false
+
+// ═══════════════════════════════════════════════════════════
+// UTILS
+// ═══════════════════════════════════════════════════════════
+function todayStr() {
+  return new Date().toISOString().slice(0, 10)
+}
+
+function fmtDate(str) {
+  const d = new Date(str + 'T00:00:00')
+  return d.toLocaleDateString('en-US', { weekday:'long', month:'long', day:'numeric' })
+}
+
+function fmtTime(sec) {
+  const m = String(Math.floor(sec / 60)).padStart(2, '0')
+  const s = String(sec % 60).padStart(2, '0')
+  return `${m}:${s}`
+}
+
+function fmtMin(min) {
+  if (min < 60) return `${min}m`
+  const h = Math.floor(min / 60), m = min % 60
+  return m === 0 ? `${h}h` : `${h}h ${m}m`
+}
+
+function hexToRgba(hex, alpha) {
+  const r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16)
+  return `rgba(${r},${g},${b},${alpha})`
+}
+
+function contrastColor(hex) {
+  const r=parseInt(hex.slice(1,3),16), g=parseInt(hex.slice(3,5),16), b=parseInt(hex.slice(5,7),16)
+  return (0.299*r + 0.587*g + 0.114*b)/255 > 0.5 ? '#000' : '#fff'
+}
+
+function addDays(dateStr, n) {
+  const d = new Date(dateStr + 'T00:00:00')
+  d.setDate(d.getDate() + n)
+  return d.toISOString().slice(0, 10)
+}
+
+function weekMonday(offset = 0) {
+  const d = new Date()
+  const day = d.getDay() === 0 ? 6 : d.getDay() - 1
+  d.setDate(d.getDate() - day + offset * 7)
+  return d.toISOString().slice(0, 10)
+}
+
+function statusColor(s) {
+  return { planned:'#94a3b8', in_progress:'#3b82f6', done:'#22c55e', missed:'#ef4444' }[s] || '#94a3b8'
+}
+
+// ═══════════════════════════════════════════════════════════
+// API
+// ═══════════════════════════════════════════════════════════
+async function api(method, path, body) {
+  try {
+    const opts = { method, headers: {'Content-Type':'application/json'} }
+    if (body) opts.body = JSON.stringify(body)
+    const res = await fetch(API() + path, opts)
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: res.statusText }))
+      throw new Error(err.detail || res.statusText)
+    }
+    if (res.status === 204) return null
+    return res.json()
+  } catch (e) {
+    toast(e.message, 'err')
+    throw e
+  }
+}
+
+async function checkHealth() {
+  try {
+    await fetch(API() + '/health')
+    document.getElementById('api-dot').className = 'dot ok'
+    toast('API connected', 'ok')
+  } catch {
+    document.getElementById('api-dot').className = 'dot'
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// TOAST
+// ═══════════════════════════════════════════════════════════
+function toast(msg, type = 'ok') {
+  const el = document.createElement('div')
+  el.className = `toast ${type}`
+  el.textContent = msg
+  document.getElementById('toasts').appendChild(el)
+  setTimeout(() => el.remove(), 3500)
+}
+
+// ═══════════════════════════════════════════════════════════
+// NAVIGATION
+// ═══════════════════════════════════════════════════════════
+function showPage(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'))
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'))
+  document.getElementById('page-' + name).classList.add('active')
+  event.target.classList.add('active')
+  if (name === 'today') loadToday()
+  if (name === 'categories') loadCategories()
+  if (name === 'weekly') loadWeekly()
+  if (name === 'review') loadReview()
+  if (name === 'analytics') loadAnalytics(analyticsDays)
+}
+
+// ═══════════════════════════════════════════════════════════
+// TODAY PAGE
+// ═══════════════════════════════════════════════════════════
+function changeDay(delta) {
+  selectedDate = addDays(selectedDate, delta)
+  loadToday()
+}
+
+async function loadToday() {
+  updateDayHeader()
+  try {
+    categories = await api('GET', '/categories/?active_only=true')
+    blocks = await api('GET', `/time-blocks/?date=${selectedDate}`)
+    renderTimeline()
+    updateDayPills()
+  } catch {}
+}
+
+function updateDayHeader() {
+  const isToday = selectedDate === todayStr()
+  document.getElementById('day-title').textContent = fmtDate(selectedDate)
+  document.getElementById('day-sub').textContent = isToday ? 'Today' : selectedDate
+}
+
+function updateDayPills() {
+  const done = blocks.filter(b => b.status === 'done').reduce((s,b) => s+b.planned_duration, 0)
+  const total = blocks.reduce((s,b) => s+b.planned_duration, 0)
+  document.getElementById('day-pills').innerHTML =
+    `<span class="badge" style="background:#22c55e20;color:#22c55e">${fmtMin(done)} done</span>
+     <span class="badge" style="background:#6366f120;color:#6366f1">${fmtMin(total)} planned</span>`
+}
+
+const VIEW_START = 7   // 07:00
+const VIEW_END   = 22  // 22:00
+const PX_PER_MIN = 1.5
+
+function renderTimeline() {
+  const tl = document.getElementById('timeline')
+  const hours = Array.from({ length: VIEW_END - VIEW_START + 1 }, (_, i) => VIEW_START + i)
+  const totalH = (VIEW_END - VIEW_START) * 60 * PX_PER_MIN
+
+  let html = `<div style="position:relative;height:${totalH}px">`
+
+  // Hour grid lines
+  hours.forEach(h => {
+    const top = (h - VIEW_START) * 60 * PX_PER_MIN
+    const label = `${String(h).padStart(2,'0')}:00`
+    html += `
+      <div style="position:absolute;top:${top}px;left:0;right:0;display:flex;align-items:flex-start;pointer-events:none">
+        <span style="width:52px;font-size:11px;color:var(--muted);text-align:right;padding-right:8px;flex-shrink:0;padding-top:2px">${label}</span>
+        <div style="flex:1;border-top:1px solid var(--border)"></div>
+      </div>`
+  })
+
+  // Now indicator
+  const now = new Date()
+  if (selectedDate === todayStr()) {
+    const nowMin = now.getHours() * 60 + now.getMinutes()
+    if (nowMin >= VIEW_START*60 && nowMin <= VIEW_END*60) {
+      const top = (nowMin - VIEW_START*60) * PX_PER_MIN
+      html += `<div style="position:absolute;top:${top}px;left:52px;right:0;display:flex;align-items:center;z-index:10;pointer-events:none">
+        <div style="width:8px;height:8px;border-radius:50%;background:var(--red);margin-left:-4px;flex-shrink:0"></div>
+        <div style="flex:1;border-top:2px solid var(--red)"></div>
+      </div>`
+    }
+  }
+
+  // Time blocks
+  const sorted = [...blocks].sort((a,b) => a.start_time.localeCompare(b.start_time))
+  sorted.forEach(block => {
+    const [sh, sm] = block.start_time.split(':').map(Number)
+    const [eh, em] = block.end_time.split(':').map(Number)
+    const startMin = sh*60 + sm
+    const endMin = eh*60 + em
+    const top = (startMin - VIEW_START*60) * PX_PER_MIN + 1
+    const height = Math.max((endMin - startMin) * PX_PER_MIN - 2, 20)
+    const cat = block.category
+    const bg = hexToRgba(cat.color_hex, block.status === 'done' ? 0.12 : 0.18)
+    const isActive = timerBlockId === block.id
+    const showTimer = isActive
+    const statusC = statusColor(block.status)
+
+    const timerBtns = block.status !== 'done' && block.status !== 'missed' ? `
+      <div class="bc-actions">
+        ${!isActive ? `<button class="block-btn" style="background:var(--primary);color:#fff" onclick="event.stopPropagation();startTimer('${block.id}')">▶ Start</button>` : ''}
+        ${isActive && !timerPaused ? `<button class="block-btn" style="background:var(--surface);color:var(--text)" onclick="event.stopPropagation();pauseTimer()">⏸</button>` : ''}
+        ${isActive ? `<button class="block-btn" style="background:var(--red);color:#fff" onclick="event.stopPropagation();stopTimer()">⏹ Stop</button>` : ''}
+      </div>` : ''
+
+    html += `
+      <div class="block-card" onclick="openBlockModal('${block.id}')"
+        style="top:${top}px;height:${height}px;background:${bg};border-left-color:${cat.color_hex};${isActive?'border-color:'+cat.color_hex+';box-shadow:0 0 0 1px '+cat.color_hex:''}">
+        <div class="bc-title" style="color:${cat.color_hex}">
+          <span class="status-dot" style="background:${statusC};margin-right:4px"></span>
+          ${block.title || cat.name}
+        </div>
+        <div class="bc-time" style="color:${contrastColor('#1e293b')};opacity:.6">
+          ${block.start_time.slice(0,5)}–${block.end_time.slice(0,5)} · ${fmtMin(block.planned_duration)}
+        </div>
+        ${height > 55 ? timerBtns : ''}
+      </div>`
+  })
+
+  html += '</div>'
+  tl.innerHTML = html
+
+  // Scroll to current time or 8am
+  const nowMin = new Date().getHours()*60 + new Date().getMinutes()
+  const scrollTo = selectedDate === todayStr()
+    ? Math.max(0, (nowMin - VIEW_START*60) * PX_PER_MIN - 100)
+    : (8 - VIEW_START) * 60 * PX_PER_MIN
+  document.getElementById('timeline-wrap').scrollTop = scrollTo
+}
+
+async function generateSchedule() {
+  try {
+    const res = await api('POST', '/schedule/generate', { target_date: selectedDate, force_regenerate: true })
+    toast(`Generated ${res.blocks.length} blocks`, 'ok')
+    if (res.warnings.length) res.warnings.forEach(w => toast(w.message, 'err'))
+    await loadToday()
+  } catch {}
+}
+
+// ═══════════════════════════════════════════════════════════
+// TIMER
+// ═══════════════════════════════════════════════════════════
+function getElapsed() {
+  if (!timerStartedAt) return timerPausedElapsed
+  return timerPausedElapsed + Math.floor((Date.now() - timerStartedAt) / 1000)
+}
+
+function startTimerTick() {
+  if (timerInterval) clearInterval(timerInterval)
+  timerInterval = setInterval(() => {
+    document.getElementById('timer-display').textContent = fmtTime(getElapsed())
+  }, 1000)
+}
+
+async function startTimer(blockId) {
+  if (timerLogId) { toast('Stop current timer first', 'err'); return }
+  try {
+    const log = await api('POST', '/time-logs/start', { time_block_id: blockId })
+    timerLogId = log.id
+    timerBlockId = blockId
+    timerStartedAt = Date.now()
+    timerPausedElapsed = 0
+    timerPaused = false
+    const block = blocks.find(b => b.id === blockId)
+    document.getElementById('banner-title').textContent = block ? (block.title || block.category.name) : 'Working…'
+    document.getElementById('active-banner').classList.add('show')
+    startTimerTick()
+    renderTimeline()
+    toast('Timer started', 'ok')
+  } catch {}
+}
+
+async function pauseTimer() {
+  if (!timerLogId) return
+  try {
+    await api('POST', `/time-logs/${timerLogId}/pause`)
+    timerPausedElapsed = getElapsed()
+    timerStartedAt = null
+    timerPaused = true
+    clearInterval(timerInterval)
+    // Start a new log when resumed — clear logId
+    const pausedBlockId = timerBlockId
+    timerLogId = null
+    timerPaused = false
+    document.getElementById('active-banner').classList.remove('show')
+    toast('Timer paused', 'ok')
+    renderTimeline()
+  } catch {}
+}
+
+async function stopTimer() {
+  if (!timerLogId) return
+  try {
+    await api('POST', `/time-logs/${timerLogId}/stop`, { interruptions: 0 })
+    clearInterval(timerInterval)
+    timerLogId = null
+    timerBlockId = null
+    timerStartedAt = null
+    timerPausedElapsed = 0
+    document.getElementById('active-banner').classList.remove('show')
+    document.getElementById('timer-display').textContent = '00:00'
+    toast('Timer stopped — block marked done', 'ok')
+    await loadToday()
+  } catch {}
+}
+
+// ═══════════════════════════════════════════════════════════
+// BLOCK MODAL
+// ═══════════════════════════════════════════════════════════
+function openBlockModal(blockId) {
+  editingBlockId = blockId
+  const modal = document.getElementById('block-modal')
+  const sel = document.getElementById('bm-cat')
+  sel.innerHTML = categories.map(c => `<option value="${c.id}">${c.name}</option>`).join('')
+
+  if (blockId) {
+    const b = blocks.find(x => x.id === blockId)
+    if (!b) return
+    document.getElementById('bm-title').textContent = 'Edit Block'
+    document.getElementById('bm-save').textContent = 'Save'
+    sel.value = b.category_id
+    document.getElementById('bm-start').value = b.start_time.slice(0,5)
+    document.getElementById('bm-end').value = b.end_time.slice(0,5)
+    document.getElementById('bm-title-inp').value = b.title || ''
+    document.getElementById('bm-notes').value = b.notes || ''
+  } else {
+    document.getElementById('bm-title').textContent = 'New Block'
+    document.getElementById('bm-save').textContent = 'Create'
+    document.getElementById('bm-start').value = '09:00'
+    document.getElementById('bm-end').value = '10:00'
+    document.getElementById('bm-title-inp').value = ''
+    document.getElementById('bm-notes').value = ''
+  }
+  modal.classList.add('open')
+}
+
+async function saveBlock() {
+  const start = document.getElementById('bm-start').value
+  const end = document.getElementById('bm-end').value
+  const [sh,sm] = start.split(':').map(Number)
+  const [eh,em] = end.split(':').map(Number)
+  const duration = (eh*60+em) - (sh*60+sm)
+  if (duration <= 0) { toast('End must be after start', 'err'); return }
+
+  const body = {
+    category_id: document.getElementById('bm-cat').value,
+    date: selectedDate,
+    start_time: start + ':00',
+    end_time: end + ':00',
+    planned_duration: duration,
+    title: document.getElementById('bm-title-inp').value || null,
+    notes: document.getElementById('bm-notes').value || null,
+  }
+
+  try {
+    if (editingBlockId) {
+      await api('PUT', `/time-blocks/${editingBlockId}`, body)
+      toast('Block updated', 'ok')
+    } else {
+      await api('POST', '/time-blocks/', body)
+      toast('Block created', 'ok')
+    }
+    closeModal('block-modal')
+    await loadToday()
+  } catch {}
+}
+
+async function deleteBlock(id) {
+  if (!confirm('Delete this block?')) return
+  try {
+    await api('DELETE', `/time-blocks/${id}`)
+    toast('Block deleted', 'ok')
+    await loadToday()
+  } catch {}
+}
+
+// ═══════════════════════════════════════════════════════════
+// CATEGORIES PAGE
+// ═══════════════════════════════════════════════════════════
+async function loadCategories() {
+  try {
+    categories = await api('GET', '/categories/')
+    const el = document.getElementById('cat-list')
+    if (!categories.length) { el.innerHTML = '<div class="muted">No categories yet.</div>'; return }
+    el.innerHTML = categories.map(c => `
+      <div class="cat-row">
+        <div class="cat-swatch" style="background:${c.color_hex}"></div>
+        <div class="cat-info">
+          <div class="cat-name">${c.name}</div>
+          <div class="cat-meta">
+            Priority ${c.priority_weight} · Target ${fmtMin(c.weekly_target_minutes)}/wk
+            ${c.daily_cap_minutes ? `· Cap ${fmtMin(c.daily_cap_minutes)}/day` : ''}
+            ${c.is_deep_work ? '· <span style="color:var(--primary)">Deep Work</span>' : ''}
+            ${!c.is_active ? '· <span style="color:var(--muted)">Inactive</span>' : ''}
+          </div>
+        </div>
+        <button class="btn btn-secondary btn-sm" onclick="openCatModal('${c.id}')">Edit</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteCat('${c.id}')">Delete</button>
+      </div>`).join('')
+  } catch {}
+}
+
+function openCatModal(catId) {
+  editingCatId = catId
+  const modal = document.getElementById('cat-modal')
+  if (catId) {
+    const c = categories.find(x => x.id === catId)
+    if (!c) return
+    document.getElementById('cm-title').textContent = 'Edit Category'
+    document.getElementById('cm-save').textContent = 'Save'
+    document.getElementById('cm-name').value = c.name
+    document.getElementById('cm-color').value = c.color_hex
+    document.getElementById('cm-priority').value = c.priority_weight
+    document.getElementById('cm-weekly').value = c.weekly_target_minutes
+    document.getElementById('cm-cap').value = c.daily_cap_minutes || ''
+    document.getElementById('cm-deep').checked = c.is_deep_work
+    document.getElementById('cm-active').checked = c.is_active
+  } else {
+    document.getElementById('cm-title').textContent = 'New Category'
+    document.getElementById('cm-save').textContent = 'Create'
+    document.getElementById('cm-name').value = ''
+    document.getElementById('cm-color').value = '#6366f1'
+    document.getElementById('cm-priority').value = 5
+    document.getElementById('cm-weekly').value = 300
+    document.getElementById('cm-cap').value = ''
+    document.getElementById('cm-deep').checked = false
+    document.getElementById('cm-active').checked = true
+  }
+  modal.classList.add('open')
+}
+
+async function saveCat() {
+  const cap = document.getElementById('cm-cap').value
+  const body = {
+    name: document.getElementById('cm-name').value.trim(),
+    color_hex: document.getElementById('cm-color').value,
+    priority_weight: parseInt(document.getElementById('cm-priority').value) || 5,
+    weekly_target_minutes: parseInt(document.getElementById('cm-weekly').value) || 0,
+    daily_cap_minutes: cap ? parseInt(cap) : null,
+    is_deep_work: document.getElementById('cm-deep').checked,
+    is_active: document.getElementById('cm-active').checked,
+  }
+  if (!body.name) { toast('Name is required', 'err'); return }
+  try {
+    if (editingCatId) {
+      await api('PUT', `/categories/${editingCatId}`, body)
+      toast('Category updated', 'ok')
+    } else {
+      await api('POST', '/categories/', body)
+      toast('Category created', 'ok')
+    }
+    closeModal('cat-modal')
+    await loadCategories()
+  } catch {}
+}
+
+async function deleteCat(id) {
+  if (!confirm('Delete this category? (Only works if no time blocks reference it)')) return
+  try {
+    await api('DELETE', `/categories/${id}`)
+    toast('Deleted', 'ok')
+    await loadCategories()
+  } catch {}
+}
+
+// ═══════════════════════════════════════════════════════════
+// WEEKLY PAGE
+// ═══════════════════════════════════════════════════════════
+function changeWeek(delta) { weekOffset += delta; loadWeekly() }
+
+async function loadWeekly() {
+  const ws = weekMonday(weekOffset)
+  const we = addDays(ws, 6)
+  const d1 = new Date(ws + 'T00:00:00'), d2 = new Date(we + 'T00:00:00')
+  document.getElementById('week-title').textContent =
+    `${d1.toLocaleDateString('en-US',{month:'short',day:'numeric'})} – ${d2.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}`
+  try {
+    const data = await api('GET', `/analytics/weekly-progress?week_start=${ws}`)
+    renderWeekly(data)
+  } catch {}
+}
+
+function renderWeekly(data) {
+  const total = data.categories.reduce((s,c) => s + c.weekly_target_minutes, 0)
+  const pct = total > 0 ? Math.round(data.total_actual_minutes / total * 100) : 0
+  document.getElementById('weekly-totals').textContent =
+    `${fmtMin(data.total_actual_minutes)} actual · ${pct}% of target`
+
+  if (!data.categories.length) {
+    document.getElementById('weekly-content').innerHTML = '<div class="muted">No category data.</div>'
+    return
+  }
+
+  document.getElementById('weekly-content').innerHTML = data.categories.map(c => {
+    const p = Math.min(c.completion_pct, 100)
+    const deficit = c.deficit_minutes > 0 ? `<span class="badge" style="background:#ef444420;color:#ef4444">-${fmtMin(c.deficit_minutes)}</span>` : ''
+    const surplus = c.actual_minutes > c.weekly_target_minutes ? `<span class="badge" style="background:#22c55e20;color:#22c55e">+${fmtMin(c.actual_minutes-c.weekly_target_minutes)}</span>` : ''
+    return `
+      <div class="prog-row">
+        <div class="prog-header">
+          <div class="row" style="gap:8px">
+            <span style="width:10px;height:10px;border-radius:50%;background:${c.color_hex};display:inline-block;flex-shrink:0"></span>
+            <span style="font-weight:600">${c.category_name}</span>
+            ${deficit}${surplus}
+          </div>
+          <span class="muted">${fmtMin(c.actual_minutes)} / ${fmtMin(c.weekly_target_minutes)}</span>
+        </div>
+        <div class="prog-bar-track">
+          <div class="prog-bar-fill" style="width:${p}%;background:${c.color_hex}"></div>
+        </div>
+      </div>`
+  }).join('')
+}
+
+// ═══════════════════════════════════════════════════════════
+// REVIEW PAGE
+// ═══════════════════════════════════════════════════════════
+async function loadReview() {
+  const today = todayStr()
+  document.getElementById('review-date-label').textContent = fmtDate(today)
+  selectEnergy(3)
+  existingReviewId = null
+
+  try {
+    const existing = await api('GET', `/reviews/by-date?date=${today}`).catch(() => null)
+    if (existing) {
+      existingReviewId = existing.id
+      selectEnergy(existing.energy_rating)
+      document.getElementById('r-sleep').value = existing.sleep_hours
+      document.getElementById('r-gym').checked = existing.gym_done
+      document.getElementById('r-notes').value = existing.notes || ''
+    }
+    const dayBlocks = await api('GET', `/time-blocks/?date=${today}`)
+    const doneCount = dayBlocks.filter(b => b.status === 'done').length
+    const missedCount = dayBlocks.filter(b => b.status === 'missed').length
+    document.getElementById('review-blocks-summary').innerHTML = `
+      <h2 style="margin-bottom:10px">Blocks: ${doneCount} done, ${missedCount} missed</h2>
+      ${dayBlocks.length === 0 ? '<div class="muted">No blocks today.</div>' :
+        dayBlocks.map(b => `
+          <div class="row" style="margin-bottom:6px">
+            <span class="status-dot" style="background:${statusColor(b.status)}"></span>
+            <span class="badge" style="background:${hexToRgba(b.category.color_hex,0.2)};color:${b.category.color_hex}">${b.category.name}</span>
+            <span class="muted" style="flex:1">${b.title || ''}</span>
+            <span class="tag">${fmtMin(b.planned_duration)}</span>
+          </div>`).join('')}`
+  } catch {}
+}
+
+function selectEnergy(n) {
+  reviewEnergy = n
+  document.querySelectorAll('.energy-btn').forEach((el, i) => {
+    el.classList.toggle('selected', i+1 === n)
+  })
+}
+
+async function submitReview() {
+  const body = {
+    date: todayStr(),
+    energy_rating: reviewEnergy,
+    sleep_hours: parseFloat(document.getElementById('r-sleep').value) || 7,
+    gym_done: document.getElementById('r-gym').checked,
+    notes: document.getElementById('r-notes').value || null,
+  }
+  try {
+    if (existingReviewId) {
+      await api('PUT', `/reviews/${existingReviewId}`, body)
+    } else {
+      await api('POST', '/reviews/', body)
+    }
+    // Generate tomorrow's schedule
+    const tomorrow = addDays(todayStr(), 1)
+    const sched = await api('POST', '/schedule/generate', { target_date: tomorrow, force_regenerate: true })
+    toast(`Review saved! ${sched.blocks.length} blocks generated for tomorrow.`, 'ok')
+    document.getElementById('review-msg').innerHTML =
+      `<div class="muted" style="text-align:center;font-size:12px;margin-top:4px">✓ Review saved · ${sched.blocks.length} blocks generated for ${tomorrow}</div>`
+  } catch {}
+}
+
+// ═══════════════════════════════════════════════════════════
+// ANALYTICS PAGE
+// ═══════════════════════════════════════════════════════════
+async function loadAnalytics(days) {
+  analyticsDays = days
+  ;[7,14,30].forEach(d => {
+    document.getElementById(`an-${d}`).className = d === days
+      ? 'btn btn-primary btn-sm' : 'btn btn-secondary btn-sm'
+  })
+  const end = todayStr()
+  const start = addDays(end, -(days-1))
+  try {
+    const [daily, deepWork, bestHours, weekly] = await Promise.all([
+      api('GET', `/analytics/daily-totals?start=${start}&end=${end}`),
+      api('GET', `/analytics/deep-work-trend?days=${days}`),
+      api('GET', `/analytics/best-hours?days=30`),
+      api('GET', `/analytics/weekly-progress?week_start=${weekMonday(0)}`),
+    ])
+    renderAnalytics(daily, deepWork, bestHours, weekly)
+  } catch {}
+}
+
+function renderAnalytics(daily, deepWork, bestHours, weekly) {
+  const totalDays = daily.length
+  const avgMin = totalDays ? Math.round(daily.reduce((s,d) => s+d.total_minutes,0) / totalDays) : 0
+  const avgDeep = deepWork.avg_deep_work_minutes ? Math.round(deepWork.avg_deep_work_minutes) : 0
+  const maxHour = bestHours.hours.length ? bestHours.hours.reduce((a,b) => a.avg_minutes>b.avg_minutes?a:b) : null
+
+  let html = `
+    <div class="stat-grid">
+      <div class="stat-box"><div class="stat-val">${fmtMin(avgMin)}</div><div class="stat-label">Avg daily work</div></div>
+      <div class="stat-box"><div class="stat-val">${fmtMin(avgDeep)}</div><div class="stat-label">Avg deep work/day</div></div>
+      <div class="stat-box"><div class="stat-val">${maxHour ? maxHour.hour+':00' : '—'}</div><div class="stat-label">Most productive hour</div></div>
+    </div>`
+
+  // Daily totals bar chart
+  if (daily.length) {
+    const max = Math.max(...daily.map(d => d.total_minutes), 1)
+    html += `<div class="card" style="margin-bottom:16px">
+      <h2 style="margin-bottom:12px">Daily Work (last ${analyticsDays} days)</h2>
+      ${daily.map(d => `
+        <div class="chart-bar-row">
+          <div class="chart-bar-label">${d.date.slice(5)}</div>
+          <div class="chart-bar-track">
+            <div class="chart-bar-fill" style="width:${d.total_minutes/max*100}%;background:var(--primary)"></div>
+          </div>
+          <div class="chart-bar-val">${fmtMin(d.total_minutes)}</div>
+        </div>`).join('')}
+    </div>`
+  }
+
+  // Deep work trend
+  if (deepWork.days.length) {
+    const max = Math.max(...deepWork.days.map(d => d.total_minutes), 1)
+    html += `<div class="card" style="margin-bottom:16px">
+      <h2 style="margin-bottom:12px">Deep Work vs Other</h2>
+      ${deepWork.days.map(d => `
+        <div class="chart-bar-row">
+          <div class="chart-bar-label">${d.date.slice(5)}</div>
+          <div class="chart-bar-track" style="position:relative">
+            <div style="position:absolute;left:0;top:0;bottom:0;width:${d.total_minutes/max*100}%;background:var(--surface2);border-radius:4px"></div>
+            <div style="position:absolute;left:0;top:0;bottom:0;width:${d.deep_work_minutes/max*100}%;background:var(--primary);border-radius:4px"></div>
+          </div>
+          <div class="chart-bar-val">${fmtMin(d.deep_work_minutes)}</div>
+        </div>`).join('')}
+      <div class="muted" style="font-size:11px;margin-top:8px">■ Deep work &nbsp; □ Other</div>
+    </div>`
+  }
+
+  // Best hours
+  if (bestHours.hours.length) {
+    const maxAvg = Math.max(...bestHours.hours.map(h => h.avg_minutes), 1)
+    html += `<div class="card" style="margin-bottom:16px">
+      <h2 style="margin-bottom:12px">Best Hours (avg min logged)</h2>
+      ${bestHours.hours.map(h => `
+        <div class="chart-bar-row">
+          <div class="chart-bar-label">${String(h.hour).padStart(2,'0')}:00</div>
+          <div class="chart-bar-track">
+            <div class="chart-bar-fill" style="width:${h.avg_minutes/maxAvg*100}%;background:var(--green)"></div>
+          </div>
+          <div class="chart-bar-val">${h.avg_minutes.toFixed(0)}m</div>
+        </div>`).join('')}
+    </div>`
+  }
+
+  // Weekly category split
+  if (weekly.categories.length) {
+    html += `<div class="card">
+      <h2 style="margin-bottom:12px">This Week by Category</h2>
+      ${weekly.categories.filter(c => c.actual_minutes > 0).map(c => {
+        const pct = Math.min(c.completion_pct, 100)
+        return `
+          <div style="margin-bottom:10px">
+            <div class="row" style="margin-bottom:4px">
+              <span style="width:10px;height:10px;border-radius:50%;background:${c.color_hex};display:inline-block"></span>
+              <span style="font-weight:500">${c.category_name}</span>
+              <div class="spacer"></div>
+              <span class="muted">${fmtMin(c.actual_minutes)} / ${fmtMin(c.weekly_target_minutes)}</span>
+            </div>
+            <div class="prog-bar-track">
+              <div class="prog-bar-fill" style="width:${pct}%;background:${c.color_hex}"></div>
+            </div>
+          </div>`
+      }).join('')}
+    </div>`
+  }
+
+  document.getElementById('analytics-content').innerHTML = html || '<div class="muted">No data yet.</div>'
+}
+
+// ═══════════════════════════════════════════════════════════
+// MODAL UTILS
+// ═══════════════════════════════════════════════════════════
+function closeModal(id) {
+  document.getElementById(id).classList.remove('open')
+}
+
+// Close on overlay click
+document.querySelectorAll('.modal-overlay').forEach(el => {
+  el.addEventListener('click', e => { if (e.target === el) el.classList.remove('open') })
+})
+
+// Keyboard shortcut: Escape closes modal
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') document.querySelectorAll('.modal-overlay.open').forEach(m => m.classList.remove('open'))
+})
+
+// ═══════════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════════
+checkHealth()
+loadToday()
+</script>
+</body>
+</html>
