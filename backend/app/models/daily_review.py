@@ -2,9 +2,8 @@ from __future__ import annotations
 import uuid
 from datetime import datetime, date, timezone
 from decimal import Decimal
-from sqlalchemy import SmallInteger, Numeric, Boolean, Text, Date, DateTime, CheckConstraint
+from sqlalchemy import SmallInteger, Numeric, Boolean, Text, Date, DateTime, CheckConstraint, String
 from sqlalchemy.orm import Mapped, mapped_column
-from sqlalchemy.dialects.postgresql import UUID
 from app.database import Base
 
 
@@ -15,8 +14,8 @@ class DailyReview(Base):
         CheckConstraint("sleep_hours BETWEEN 0 AND 24", name="chk_sleep_hours"),
     )
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    id: Mapped[str] = mapped_column(
+        String(36), primary_key=True, default=lambda: str(uuid.uuid4())
     )
     date: Mapped[date] = mapped_column(Date, nullable=False, unique=True, index=True)
     energy_rating: Mapped[int] = mapped_column(SmallInteger, nullable=False)

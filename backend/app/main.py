@@ -6,7 +6,9 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.config import get_settings
+from app.database import _get_engine, Base
 from app.jobs.nightly_schedule import create_scheduler
+import app.models  # noqa: F401 — registers all ORM models with Base.metadata
 from app.routers import categories, time_blocks, time_logs, daily_review, analytics, schedule
 
 UI_FILE = Path(__file__).parents[2] / "scheduler.html"
@@ -16,6 +18,10 @@ settings = get_settings()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # Auto-create tables (works for SQLite dev; use Alembic for production)
+    engine = _get_engine()
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
     scheduler = create_scheduler()
     scheduler.start()
     yield

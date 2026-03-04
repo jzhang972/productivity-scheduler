@@ -1,7 +1,6 @@
 from __future__ import annotations
-import uuid
 from datetime import datetime
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field
 
 
 class CategoryBase(BaseModel):
@@ -29,7 +28,7 @@ class CategoryUpdate(BaseModel):
 
 
 class CategoryRead(CategoryBase):
-    id: uuid.UUID
+    id: str
     created_at: datetime
     updated_at: datetime
 

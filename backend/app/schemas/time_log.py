@@ -1,11 +1,10 @@
 from __future__ import annotations
-import uuid
 from datetime import datetime
 from pydantic import BaseModel, Field
 
 
 class TimeLogCreate(BaseModel):
-    time_block_id: uuid.UUID
+    time_block_id: str
     notes: str | None = None
 
 
@@ -22,8 +21,8 @@ class TimeLogUpdate(BaseModel):
 
 
 class TimeLogRead(BaseModel):
-    id: uuid.UUID
-    time_block_id: uuid.UUID
+    id: str
+    time_block_id: str
     actual_start: datetime
     actual_end: datetime | None
     actual_duration: int | None

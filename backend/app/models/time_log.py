@@ -1,9 +1,8 @@
 from __future__ import annotations
 import uuid
 from datetime import datetime, timezone
-from sqlalchemy import Integer, SmallInteger, Text, ForeignKey, DateTime, CheckConstraint
+from sqlalchemy import Integer, SmallInteger, Text, ForeignKey, DateTime, CheckConstraint, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy.dialects.postgresql import UUID
 from app.database import Base
 
 
@@ -16,11 +15,11 @@ class TimeLog(Base):
         ),
     )
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    id: Mapped[str] = mapped_column(
+        String(36), primary_key=True, default=lambda: str(uuid.uuid4())
     )
-    time_block_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
+    time_block_id: Mapped[str] = mapped_column(
+        String(36),
         ForeignKey("time_blocks.id", ondelete="CASCADE"),
         nullable=False,
         index=True,

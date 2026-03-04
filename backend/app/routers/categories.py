@@ -1,4 +1,3 @@
-from uuid import UUID
 from fastapi import APIRouter, HTTPException, status
 from sqlalchemy import select
 from app.dependencies import DB
@@ -31,7 +30,7 @@ async def create_category(data: CategoryCreate, db: DB):
 
 
 @router.get("/{category_id}", response_model=CategoryRead)
-async def get_category(category_id: UUID, db: DB):
+async def get_category(category_id: str, db: DB):
     cat = await db.get(Category, category_id)
     if not cat:
         raise HTTPException(status_code=404, detail="Category not found.")
@@ -39,7 +38,7 @@ async def get_category(category_id: UUID, db: DB):
 
 
 @router.put("/{category_id}", response_model=CategoryRead)
-async def update_category(category_id: UUID, data: CategoryUpdate, db: DB):
+async def update_category(category_id: str, data: CategoryUpdate, db: DB):
     cat = await db.get(Category, category_id)
     if not cat:
         raise HTTPException(status_code=404, detail="Category not found.")
@@ -51,7 +50,7 @@ async def update_category(category_id: UUID, data: CategoryUpdate, db: DB):
 
 
 @router.delete("/{category_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_category(category_id: UUID, db: DB):
+async def delete_category(category_id: str, db: DB):
     cat = await db.get(Category, category_id)
     if not cat:
         raise HTTPException(status_code=404, detail="Category not found.")

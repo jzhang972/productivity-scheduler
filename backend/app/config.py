@@ -3,8 +3,8 @@ from functools import lru_cache
 
 
 class Settings(BaseSettings):
-    database_url: str = "postgresql+asyncpg://postgres:password@localhost:5432/scheduler"
-    database_url_sync: str = "postgresql://postgres:password@localhost:5432/scheduler"
+    database_url: str = "sqlite+aiosqlite:///./scheduler.db"
+    database_url_sync: str = "sqlite:///./scheduler.db"
     secret_key: str = "change-me-in-production-very-secret-key"
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 60 * 24 * 7  # 7 days

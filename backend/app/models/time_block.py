@@ -6,7 +6,6 @@ from sqlalchemy import (
     DateTime, CheckConstraint, Enum as SAEnum
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy.dialects.postgresql import UUID
 from app.database import Base
 from app.enums import BlockStatus
 
@@ -18,11 +17,11 @@ class TimeBlock(Base):
         CheckConstraint("planned_duration > 0", name="chk_positive_duration"),
     )
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    id: Mapped[str] = mapped_column(
+        String(36), primary_key=True, default=lambda: str(uuid.uuid4())
     )
-    category_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
+    category_id: Mapped[str] = mapped_column(
+        String(36),
         ForeignKey("categories.id", ondelete="RESTRICT"),
         nullable=False,
         index=True,
@@ -32,7 +31,7 @@ class TimeBlock(Base):
     end_time: Mapped[time] = mapped_column(Time, nullable=False)
     planned_duration: Mapped[int] = mapped_column(Integer, nullable=False)
     status: Mapped[BlockStatus] = mapped_column(
-        SAEnum(BlockStatus, name="block_status", create_type=True),
+        SAEnum(BlockStatus, name="block_status", create_type=False),
         nullable=False,
         default=BlockStatus.planned,
         index=True,

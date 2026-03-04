@@ -1,5 +1,4 @@
 from datetime import date
-from uuid import UUID
 from fastapi import APIRouter, HTTPException, Query, status
 from sqlalchemy import select, and_
 from app.dependencies import DB
@@ -13,7 +12,7 @@ from app.schemas.time_block import (
 router = APIRouter(prefix="/time-blocks", tags=["time-blocks"])
 
 
-async def _get_or_404(db: DB, block_id: UUID) -> TimeBlock:
+async def _get_or_404(db: DB, block_id: str) -> TimeBlock:
     stmt = select(TimeBlock).where(TimeBlock.id == block_id)
     block = (await db.execute(stmt)).scalar_one_or_none()
     if not block:
@@ -51,7 +50,6 @@ async def list_blocks_in_range(
 
 @router.post("/", response_model=TimeBlockRead, status_code=status.HTTP_201_CREATED)
 async def create_block(data: TimeBlockCreate, db: DB):
-    # Verify category exists
     cat = await db.get(Category, data.category_id)
     if not cat:
         raise HTTPException(status_code=404, detail="Category not found.")
@@ -59,19 +57,18 @@ async def create_block(data: TimeBlockCreate, db: DB):
     block = TimeBlock(**data.model_dump())
     db.add(block)
     await db.flush()
-    # Reload with joined category
     stmt = select(TimeBlock).where(TimeBlock.id == block.id)
     block = (await db.execute(stmt)).scalar_one()
     return block
 
 
 @router.get("/{block_id}", response_model=TimeBlockRead)
-async def get_block(block_id: UUID, db: DB):
+async def get_block(block_id: str, db: DB):
     return await _get_or_404(db, block_id)
 
 
 @router.put("/{block_id}", response_model=TimeBlockRead)
-async def update_block(block_id: UUID, data: TimeBlockUpdate, db: DB):
+async def update_block(block_id: str, data: TimeBlockUpdate, db: DB):
     block = await _get_or_404(db, block_id)
     for field, value in data.model_dump(exclude_unset=True).items():
         setattr(block, field, value)
@@ -81,7 +78,7 @@ async def update_block(block_id: UUID, data: TimeBlockUpdate, db: DB):
 
 
 @router.patch("/{block_id}/status", response_model=TimeBlockRead)
-async def update_block_status(block_id: UUID, data: TimeBlockStatusUpdate, db: DB):
+async def update_block_status(block_id: str, data: TimeBlockStatusUpdate, db: DB):
     block = await _get_or_404(db, block_id)
     block.status = data.status
     await db.flush()
@@ -90,6 +87,6 @@ async def update_block_status(block_id: UUID, data: TimeBlockStatusUpdate, db: D
 
 
 @router.delete("/{block_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_block(block_id: UUID, db: DB):
+async def delete_block(block_id: str, db: DB):
     block = await _get_or_404(db, block_id)
     await db.delete(block)

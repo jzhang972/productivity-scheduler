@@ -3,15 +3,14 @@ import uuid
 from datetime import datetime, timezone
 from sqlalchemy import String, Integer, SmallInteger, Boolean, DateTime
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy.dialects.postgresql import UUID
 from app.database import Base
 
 
 class Category(Base):
     __tablename__ = "categories"
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    id: Mapped[str] = mapped_column(
+        String(36), primary_key=True, default=lambda: str(uuid.uuid4())
     )
     name: Mapped[str] = mapped_column(String(100), nullable=False, unique=True)
     color_hex: Mapped[str] = mapped_column(String(7), nullable=False, default="#6366f1")

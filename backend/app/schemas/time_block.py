@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import datetime
-import uuid
 from typing import Optional
 
 from pydantic import BaseModel, Field, model_validator
@@ -10,7 +9,7 @@ from app.schemas.category import CategoryRead
 
 
 class TimeBlockBase(BaseModel):
-    category_id: uuid.UUID
+    category_id: str
     date: datetime.date
     start_time: datetime.time
     end_time: datetime.time
@@ -30,7 +29,7 @@ class TimeBlockCreate(TimeBlockBase):
 
 
 class TimeBlockUpdate(BaseModel):
-    category_id: Optional[uuid.UUID] = None
+    category_id: Optional[str] = None
     date: Optional[datetime.date] = None
     start_time: Optional[datetime.time] = None
     end_time: Optional[datetime.time] = None
@@ -44,7 +43,7 @@ class TimeBlockStatusUpdate(BaseModel):
 
 
 class TimeBlockRead(TimeBlockBase):
-    id: uuid.UUID
+    id: str
     status: BlockStatus
     category: CategoryRead
     created_at: datetime.datetime

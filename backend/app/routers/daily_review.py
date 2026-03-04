@@ -1,5 +1,4 @@
 from datetime import date
-from uuid import UUID
 from fastapi import APIRouter, HTTPException, Query, status
 from sqlalchemy import select
 from app.dependencies import DB
@@ -42,7 +41,7 @@ async def create_review(data: DailyReviewCreate, db: DB):
 
 
 @router.put("/{review_id}", response_model=DailyReviewRead)
-async def update_review(review_id: UUID, data: DailyReviewUpdate, db: DB):
+async def update_review(review_id: str, data: DailyReviewUpdate, db: DB):
     review = await db.get(DailyReview, review_id)
     if not review:
         raise HTTPException(status_code=404, detail="Review not found.")

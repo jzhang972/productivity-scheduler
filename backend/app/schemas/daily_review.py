@@ -28,7 +28,7 @@ class DailyReviewUpdate(BaseModel):
 
 
 class DailyReviewRead(DailyReviewBase):
-    id: uuid.UUID
+    id: str
     created_at: datetime.datetime
     updated_at: datetime.datetime
 

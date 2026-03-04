@@ -19,13 +19,11 @@ def _get_engine():
     global _engine
     if _engine is None:
         settings = get_settings()
-        _engine = create_async_engine(
-            settings.database_url,
-            echo=False,
-            pool_pre_ping=True,
-            pool_size=10,
-            max_overflow=20,
-        )
+        url = settings.database_url
+        if url.startswith("sqlite"):
+            _engine = create_async_engine(url, echo=False, connect_args={"check_same_thread": False})
+        else:
+            _engine = create_async_engine(url, echo=False, pool_pre_ping=True, pool_size=10, max_overflow=20)
     return _engine
 
 
