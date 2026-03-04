@@ -1,0 +1,1 @@
+Update the `@CLAUDE.md` file to indicate that as you do work you need to commit things to Git and push them to GitHub regularly with clean commit messages so we never lose the status or work that we have done.
