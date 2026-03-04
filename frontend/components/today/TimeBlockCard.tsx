@@ -92,19 +92,25 @@ export function TimeBlockCard({
             {block.start_time.slice(0, 5)} – {block.end_time.slice(0, 5)}
           </p>
 
-          {/* Timer controls */}
+          {/* Timer controls — show only elapsed when this block is active (banner has the buttons) */}
           {block.status !== "done" && block.status !== "missed" && (
-            <WorkTimer
-              elapsed={isThisBlock ? timer.elapsedFormatted : "00:00"}
-              isRunning={isThisBlock && timer.isRunning}
-              isPaused={isThisBlock && timer.isPaused}
-              isStarting={timer.isStarting}
-              isStopping={timer.isStopping}
-              onStart={() => timer.startTimer(block.id)}
-              onPause={timer.pauseTimer}
-              onStop={() => timer.stopTimer()}
-              className="mt-0.5"
-            />
+            isThisBlock ? (
+              <span className="mt-0.5 font-mono text-sm tabular-nums text-blue-600">
+                {timer.elapsedFormatted}
+              </span>
+            ) : (
+              <WorkTimer
+                elapsed="00:00"
+                isRunning={false}
+                isPaused={false}
+                isStarting={timer.isStarting}
+                isStopping={timer.isStopping}
+                onStart={() => timer.startTimer(block.id)}
+                onPause={timer.pauseTimer}
+                onStop={() => timer.stopTimer()}
+                className="mt-0.5"
+              />
+            )
           )}
         </div>
 

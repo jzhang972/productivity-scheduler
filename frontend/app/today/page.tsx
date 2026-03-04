@@ -98,9 +98,11 @@ export default function TodayPage() {
         </div>
       </div>
 
-      {/* Active block banner */}
+      {/* Active block banner — sticky below the navigation */}
       {activeBlock && (
-        <CurrentBlockBanner block={activeBlock} date={selectedDate} />
+        <div className="sticky top-0 z-30 -mx-4 px-4 pb-1 bg-background">
+          <CurrentBlockBanner block={activeBlock} date={selectedDate} />
+        </div>
       )}
 
       {/* Timeline */}

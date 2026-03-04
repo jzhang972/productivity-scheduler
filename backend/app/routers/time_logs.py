@@ -45,8 +45,13 @@ async def stop_timer(log_id: str, data: TimeLogStop, db: DB):
         raise HTTPException(status_code=409, detail="Timer already stopped.")
 
     now = datetime.now(timezone.utc)
+    # SQLite returns naive datetimes; normalise before arithmetic to avoid TypeError
+    actual_start = log.actual_start
+    if actual_start.tzinfo is None:
+        actual_start = actual_start.replace(tzinfo=timezone.utc)
+
     log.actual_end = now
-    log.actual_duration = int((now - log.actual_start).total_seconds() / 60)
+    log.actual_duration = max(0, int((now - actual_start).total_seconds() / 60))
     log.interruptions = data.interruptions
     if data.notes:
         log.notes = data.notes
@@ -69,8 +74,13 @@ async def pause_timer(log_id: str, db: DB):
         raise HTTPException(status_code=409, detail="Timer already stopped.")
 
     now = datetime.now(timezone.utc)
+    # SQLite returns naive datetimes; normalise before arithmetic to avoid TypeError
+    actual_start = log.actual_start
+    if actual_start.tzinfo is None:
+        actual_start = actual_start.replace(tzinfo=timezone.utc)
+
     log.actual_end = now
-    log.actual_duration = int((now - log.actual_start).total_seconds() / 60)
+    log.actual_duration = max(0, int((now - actual_start).total_seconds() / 60))
 
     await db.flush()
     await db.refresh(log)
